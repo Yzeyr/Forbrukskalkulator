@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Forbrukskalkulator</title>
+<meta name="description" content="Regn ut forbruk av avrettingsmasse — flatt gulv, bad med fall til sluk, eller selve fallhøyden.">
+<meta name="theme-color" content="#12333b">
+<style>
+  :root {
+    --ink: #1c2530;
+    --ink-soft: #4a5568;
+    --paper: #f7f5f0;
+    --card: #ffffff;
+    --line: #dedad0;
+    --accent: #14555f;
+    --accent-soft: #e2edef;
+    --warn-bg: #fdf3e3;
+    --warn-line: #b57e14;
+    --max: 640px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--paper);
+    line-height: 1.55;
+  }
+
+  header.site {
+    background: #12333b;
+    color: #f2f0ea;
+    padding: 1.6rem 1.25rem 1.3rem;
+    padding-left: max(1.25rem, env(safe-area-inset-left));
+    padding-right: max(1.25rem, env(safe-area-inset-right));
+  }
+  header.site .inner { max-width: var(--max); margin: 0 auto; }
+  header.site h1 { margin: 0 0 0.3rem; font-size: clamp(1.6rem, 5vw, 2.2rem); letter-spacing: -0.01em; }
+  header.site p { margin: 0; color: #cdc9bd; max-width: 60ch; font-size: 0.88rem; }
+
+  main {
+    max-width: var(--max); margin: 0 auto;
+    padding: 1.6rem 1.25rem 4rem;
+    padding-left: max(1.25rem, env(safe-area-inset-left));
+    padding-right: max(1.25rem, env(safe-area-inset-right));
+  }
+
+  .calc {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 10px; padding: 1rem 1.15rem; margin: 0 0 1.6rem;
+  }
+  .calc h2 { margin: 0 0 0.2rem; font-size: 1.1rem; }
+  .calc .calc-sub { margin: 0 0 0.9rem; font-size: 0.85rem; color: var(--ink-soft); }
+  .field { margin-bottom: 0.75rem; }
+  .field label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.25rem; }
+  .field .hint { display: block; font-weight: 400; font-size: 0.78rem; color: var(--ink-soft); margin-top: 0.1rem; }
+  .field input, .field select {
+    width: 100%; font: inherit; font-size: 1rem;
+    padding: 0.55rem 0.7rem; min-height: 2.75rem;
+    border: 1px solid var(--line); border-radius: 8px;
+    background: var(--paper); color: var(--ink);
+  }
+  .field input:focus, .field select:focus {
+    outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+  .calc-out { margin-top: 1rem; border-top: 1px solid var(--line); padding-top: 0.85rem; }
+  .out-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    gap: 0.6rem; padding: 0.35rem 0; flex-wrap: wrap;
+  }
+  .out-row + .out-row { border-top: 1px dashed var(--line); }
+  .out-label { font-size: 0.87rem; color: var(--ink-soft); }
+  .out-value { font-size: 1.15rem; font-weight: 800; color: var(--accent); }
+  .out-row.primary .out-value { font-size: 1.5rem; }
+  .out-note { font-size: 0.82rem; color: var(--ink-soft); margin: 0.6rem 0 0; }
+  .calc-warn {
+    margin-top: 0.75rem; font-size: 0.86rem;
+    background: var(--warn-bg); border-left: 4px solid var(--warn-line);
+    border-radius: 6px; padding: 0.6rem 0.8rem;
+  }
+  .calc-warn[hidden] { display: none; }
+
+  @media (max-width: 380px) {
+    .field-row { grid-template-columns: 1fr; }
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #e8e6df;
+      --ink-soft: #adaa9e;
+      --paper: #14181c;
+      --card: #1c2126;
+      --line: #2f363d;
+      --accent: #6fc6d6;
+      --accent-soft: #1b3238;
+      --warn-bg: #2c2416;
+      --warn-line: #d9a441;
+    }
+  }
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="inner">
+    <h1>🧮 Forbrukskalkulator</h1>
+    <p>Regn ut forbruk av avrettingsmasse til gulv. Alle tall er estimater — kontroller mot produktets datablad før du bestiller.</p>
+  </div>
+</header>
+
+<main>
+
+  <div class="calc" id="calc-forbruk">
+    <h2>Forbruk avrettingsmasse <span style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; background:var(--accent-soft); color:var(--accent); padding:0.15rem 0.5rem; border-radius:4px;">Standard</span></h2>
+    <p class="calc-sub">Flatt gulv, jevn lagtykkelse over hele arealet. Skal du bygge fall, bruk kalkulatoren under.</p>
+    <div class="field-row">
+      <div class="field">
+        <label for="fb-areal">Areal
+          <span class="hint">m²</span>
+        </label>
+        <input type="text" id="fb-areal" inputmode="decimal" value="20" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="fb-tykk">Lagtykkelse
+          <span class="hint">mm</span>
+        </label>
+        <input type="text" id="fb-tykk" inputmode="decimal" value="5" autocomplete="off">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="fb-forbruk">Forbruk
+          <span class="hint">kg/mm/m²</span>
+        </label>
+        <input type="text" id="fb-forbruk" inputmode="decimal" value="1,75" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="fb-svinn">Svinn
+          <span class="hint">% påslag</span>
+        </label>
+        <input type="text" id="fb-svinn" inputmode="decimal" value="10" autocomplete="off">
+      </div>
+    </div>
+    <div class="field">
+      <label for="fb-sekk">Sekkestørrelse
+        <span class="hint">kg per sekk</span>
+      </label>
+      <input type="text" id="fb-sekk" inputmode="decimal" value="20" autocomplete="off">
+    </div>
+    <div class="calc-out">
+      <div class="out-row primary">
+        <span class="out-label">Trenger ca.</span>
+        <span class="out-value" id="fb-sekker">—</span>
+      </div>
+      <div class="out-row">
+        <span class="out-label">Masse inkl. svinn</span>
+        <span class="out-value" id="fb-kg">—</span>
+      </div>
+      <div class="out-row">
+        <span class="out-label">Vann til blanding</span>
+        <span class="out-value" id="fb-vann">—</span>
+      </div>
+      <div class="calc-warn" id="fb-warn" hidden></div>
+      <p class="out-note">Vannmengden regnes med 3,6 liter per 20 kg sekk (weberfloor 120 Reno). Andre produkter har annet blandeforhold — sjekk sekken.</p>
+    </div>
+  </div>
+
+  <div class="calc" id="calc-bad">
+    <h2>Masse til bad med fall</h2>
+    <p class="calc-sub">Estimerer hvor mye avrettingsmasse som går med når fallet bygges inn.</p>
+    <div class="field">
+      <label for="bad-areal">Areal
+        <span class="hint">Gulvareal i m².</span>
+      </label>
+      <input type="text" id="bad-areal" inputmode="decimal" value="6" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="bad-sluk">Høyde fra gulv til sluk
+        <span class="hint">Sluktoppens høyde over eksisterende undergulv, i mm. Dette er tykkelsen ved sluket — lavpunktet.</span>
+      </label>
+      <input type="text" id="bad-sluk" inputmode="decimal" value="10" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="bad-dor">Høyde til dør fra sluk
+        <span class="hint">Høydeforskjellen mellom sluk og dørterskel/høyeste punkt, i mm. Dette er selve fallet.</span>
+      </label>
+      <input type="text" id="bad-dor" inputmode="decimal" value="20" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="bad-form">Fallform
+        <span class="hint">Avgjør hvordan snittykkelsen regnes ut.</span>
+      </label>
+      <select id="bad-form">
+        <option value="0.6667" selected>Fall fra alle kanter mot punktsluk (snitt = ⅔ av fallet)</option>
+        <option value="0.5">Ensidig fall, én retning (snitt = ½ av fallet)</option>
+      </select>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="bad-forbruk">Forbruk
+          <span class="hint">kg/mm/m²</span>
+        </label>
+        <input type="text" id="bad-forbruk" inputmode="decimal" value="1,75" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="bad-svinn">Svinn
+          <span class="hint">% påslag</span>
+        </label>
+        <input type="text" id="bad-svinn" inputmode="decimal" value="10" autocomplete="off">
+      </div>
+    </div>
+    <div class="field">
+      <label for="bad-sekk">Sekkestørrelse
+        <span class="hint">kg per sekk. weberfloor 120 Reno leveres i 20 kg.</span>
+      </label>
+      <input type="text" id="bad-sekk" inputmode="decimal" value="20" autocomplete="off">
+    </div>
+    <div class="calc-out">
+      <div class="out-row primary">
+        <span class="out-label">Trenger ca.</span>
+        <span class="out-value" id="bad-sekker">—</span>
+      </div>
+      <div class="out-row">
+        <span class="out-label">Masse inkl. svinn</span>
+        <span class="out-value" id="bad-kg">—</span>
+      </div>
+      <div class="out-row">
+        <span class="out-label">Snitt lagtykkelse</span>
+        <span class="out-value" id="bad-snitt">—</span>
+      </div>
+      <div class="out-row">
+        <span class="out-label">Tykkelse ved sluk / høyeste punkt</span>
+        <span class="out-value" id="bad-spenn">—</span>
+      </div>
+      <div class="calc-warn" id="bad-warn" hidden></div>
+      <p class="out-note">Modellen antar at fallet er en jevn flate fra høyeste punkt ned til sluket. Nedsenket dusjsone, varmekabler, rørgjennomføringer og ujevnt undergulv endrer forbruket — legg på ekstra ved tvil.</p>
+    </div>
+  </div>
+
+  <div class="calc" id="calc-fall">
+    <h2>Fall til sluk</h2>
+    <p class="calc-sub">Hvor mye høydeforskjell trenger du over en gitt avstand?</p>
+    <div class="field">
+      <label for="fall-dist">Avstand fra sluk
+        <span class="hint">I meter. Bruk komma eller punktum.</span>
+      </label>
+      <input type="text" id="fall-dist" inputmode="decimal" value="1,5" autocomplete="off">
+    </div>
+    <div class="calc-out">
+      <div class="out-row primary">
+        <span class="out-label">1:50 — dusjsone</span>
+        <span class="out-value" id="fall-50">30 mm</span>
+      </div>
+      <div class="out-row primary">
+        <span class="out-label">1:100 — resten av gulvet</span>
+        <span class="out-value" id="fall-100">15 mm</span>
+      </div>
+      <p class="out-note">1:50 = 20 mm per meter. 1:100 = 10 mm per meter. Kravet gjelder <strong>ferdig gulv</strong> — altså inkludert beleggets tykkelse.</p>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  // Norske brukere skriver komma. Godta begge.
+  function num(id) {
+    var raw = (document.getElementById(id).value || '').replace(/\s/g, '').replace(',', '.');
+    var v = parseFloat(raw);
+    return isFinite(v) ? v : NaN;
+  }
+  function fmt(v, dec) {
+    if (!isFinite(v)) return '—';
+    return v.toLocaleString('nb-NO', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  }
+  function setText(id, s) { document.getElementById(id).textContent = s; }
+  function setWarn(id, msg) {
+    var n = document.getElementById(id);
+    if (msg) { n.textContent = msg; n.hidden = false; } else { n.hidden = true; }
+  }
+
+  function calcFall() {
+    var d = num('fall-dist');
+    if (!isFinite(d) || d <= 0) { setText('fall-50', '—'); setText('fall-100', '—'); return; }
+    setText('fall-50', fmt(d * 20, 0) + ' mm');
+    setText('fall-100', fmt(d * 10, 0) + ' mm');
+  }
+
+  function calcBad() {
+    var areal = num('bad-areal');
+    var hSluk = num('bad-sluk');
+    var hFall = num('bad-dor');
+    var faktor = parseFloat(document.getElementById('bad-form').value);
+    var forbruk = num('bad-forbruk');
+    var svinn = num('bad-svinn');
+    var sekk = num('bad-sekk');
+
+    var ok = [areal, hSluk, hFall, forbruk, sekk].every(function (v) { return isFinite(v) && v >= 0; })
+      && areal > 0 && forbruk > 0 && sekk > 0;
+    if (!ok) {
+      ['bad-sekker', 'bad-kg', 'bad-snitt', 'bad-spenn'].forEach(function (i) { setText(i, '—'); });
+      setWarn('bad-warn', 'Fyll inn areal, høyder, forbruk og sekkestørrelse.');
+      return;
+    }
+
+    // Snittykkelse: bunnhøyden ved sluket + gjennomsnittet av selve fallet.
+    // Faller gulvet fra alle kanter mot et punktsluk er snittet 2/3 av
+    // fallhøyden (pyramide/kjegle), ikke halvparten — se valget i skjemaet.
+    var snitt = hSluk + hFall * faktor;
+    var maks = hSluk + hFall;
+    var kgRent = areal * snitt * forbruk;
+    var kg = kgRent * (1 + (isFinite(svinn) ? svinn : 0) / 100);
+    var sekker = Math.ceil(kg / sekk);
+
+    setText('bad-snitt', fmt(snitt, 1) + ' mm');
+    setText('bad-spenn', fmt(hSluk, 0) + ' → ' + fmt(maks, 0) + ' mm');
+    setText('bad-kg', fmt(kg, 0) + ' kg');
+    setText('bad-sekker', sekker + (sekker === 1 ? ' sekk' : ' sekker'));
+
+    var warns = [];
+    if (hSluk > 0 && hSluk < 4) warns.push('Tykkelsen ved sluket (' + fmt(hSluk, 0) + ' mm) er under minste lagtykkelse på 4 mm for weberfloor 120 Reno.');
+    if (maks > 50) warns.push('Høyeste punkt blir ' + fmt(maks, 0) + ' mm — over maks 50 mm i ett sjikt. Bygg opp i flere omganger med priming mellom.');
+    if (hFall === 0) warns.push('Fallhøyden er 0 mm — da regnes flaten som plan, uten fall til sluk.');
+    setWarn('bad-warn', warns.join(' '));
+  }
+
+  function calcForbruk() {
+    var areal = num('fb-areal');
+    var tykk = num('fb-tykk');
+    var forbruk = num('fb-forbruk');
+    var svinn = num('fb-svinn');
+    var sekk = num('fb-sekk');
+
+    var ok = [areal, tykk, forbruk, sekk].every(function (v) { return isFinite(v) && v > 0; });
+    if (!ok) {
+      ['fb-sekker', 'fb-kg', 'fb-vann'].forEach(function (i) { setText(i, '—'); });
+      setWarn('fb-warn', 'Fyll inn areal, lagtykkelse, forbruk og sekkestørrelse.');
+      return;
+    }
+
+    var kg = areal * tykk * forbruk * (1 + (isFinite(svinn) ? svinn : 0) / 100);
+    var sekker = Math.ceil(kg / sekk);
+    var vann = sekker * (3.6 / 20) * sekk;
+
+    setText('fb-kg', fmt(kg, 0) + ' kg');
+    setText('fb-sekker', sekker + (sekker === 1 ? ' sekk' : ' sekker'));
+    setText('fb-vann', fmt(vann, 1) + ' liter');
+
+    var warns = [];
+    if (tykk < 4) warns.push('Lagtykkelsen er under minste lagtykkelse på 4 mm for weberfloor 120 Reno.');
+    if (tykk > 50) warns.push('Lagtykkelsen er over maks 50 mm i ett sjikt — bygg opp i flere omganger med priming mellom.');
+    setWarn('fb-warn', warns.join(' '));
+  }
+
+  ['fall-dist'].forEach(function (id) {
+    document.getElementById(id).addEventListener('input', calcFall);
+  });
+  ['bad-areal', 'bad-sluk', 'bad-dor', 'bad-forbruk', 'bad-svinn', 'bad-sekk', 'bad-form'].forEach(function (id) {
+    var n = document.getElementById(id);
+    n.addEventListener('input', calcBad);
+    n.addEventListener('change', calcBad);
+  });
+  ['fb-areal', 'fb-tykk', 'fb-forbruk', 'fb-svinn', 'fb-sekk'].forEach(function (id) {
+    document.getElementById(id).addEventListener('input', calcForbruk);
+  });
+  calcFall(); calcBad(); calcForbruk();
+</script>
+
+</body>
+</html>
